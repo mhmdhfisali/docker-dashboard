@@ -1,10 +1,3 @@
-Berikut adalah isi file **`README.md`** terbaru yang sudah dipercantik, dilengkapi dengan seluruh fitur v3.6 Pro (termasuk **Per-Container Public Cloudflare Tunnel**, **Isolated Multi-Hyphen Stack Grouping**, dan **Quick Filter Tabs**), serta perintah untuk langsung mem-push semuanya ke GitHub!
-
----
-
-### Kode Lengkap `README.md`
-
-````markdown
 <div align="center">
 
   <!-- Header Banner -->
