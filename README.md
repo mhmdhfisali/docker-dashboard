@@ -54,7 +54,7 @@ node server.js
 ```
 ````
 
-## ⚙️ Tech Stack
+⚙️ Tech Stack
 
 - **Backend**: Node.js, Express.js (`child_process` execution for Docker CLI & Cloudflare Tunnel management)
 - **Frontend**: HTML5, Tailwind CSS, FontAwesome Icons, Vanilla JS (Polling & Event Interception)
