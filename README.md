@@ -54,10 +54,6 @@ node server.js
 ```
 ````
 
-Dashboard will be accessible locally at `http://localhost:3000`.
-
----
-
 ## ⚙️ Tech Stack
 
 - **Backend**: Node.js, Express.js (`child_process` execution for Docker CLI & Cloudflare Tunnel management)
