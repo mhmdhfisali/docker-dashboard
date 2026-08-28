@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="id" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Docker Control Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              darkbg: "#0b0f19",
+              cardbg: "#111827",
+              bordercolor: "#1f2937",
+            },
+          },
+        },
+      }
+    </script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body
+    class="bg-darkbg text-slate-100 min-h-screen font-sans antialiased p-6 md:p-10"
+  >
+    <div class="max-w-5xl mx-auto space-y-8">
+      <!-- Header -->
+      <div
+        class="flex items-center justify-between border-b border-slate-800 pb-6"
+      >
+        <div class="flex items-center space-x-4">
+          <div
+            class="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center"
+          >
+            <i class="fa-brands fa-docker text-3xl text-sky-400"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl font-extrabold text-white tracking-wide">
+              Docker Control Center
+            </h1>
+            <p class="text-xs text-slate-400">
+              Interactive Collapsible Container Manager
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button
+            onclick="stopAll()"
+            class="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/30 transition active:scale-95"
+          >
+            <i class="fa-solid fa-power-off mr-1.5"></i> Stop All
+          </button>
+          <button
+            onclick="fetchStatus()"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl border border-slate-700 transition active:scale-95"
+          >
+            <i class="fa-solid fa-rotate-right text-sky-400 mr-1.5"></i> Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Indicator Stats -->
+      <div
+        class="flex justify-between items-center text-xs text-slate-400 font-mono"
+      >
+        <span>DETECTED STACKS</span>
+        <span id="global-count" class="text-emerald-400 font-bold"
+          >0 Containers Running</span
+        >
+      </div>
+
+      <!-- Collapsible Stacks Container -->
+      <div class="space-y-4" id="stack-container">
+        <!-- Generated Dynamically -->
+      </div>
+    </div>
+
+    <script>
+      // Menyimpan state collapse per card
+      const openCards = {}
+
+      async function fetchStatus() {
+        try {
+          const res = await fetch("/api/status")
+          const data = await res.json()
+          document.getElementById("global-count").innerText =
+            `${data.totalRunning} Containers Running`
+          renderStacks(data.stacks)
+        } catch (err) {
+          console.error(err)
+        }
+      }
+
+      function toggleCollapse(prefix) {
+        openCards[prefix] = !openCards[prefix]
+        fetchStatus()
+      }
+
+      function renderStacks(stacks) {
+        const container = document.getElementById("stack-container")
+        const keys = Object.keys(stacks)
+
+        if (keys.length === 0) {
+          container.innerHTML = `<div class="p-8 text-center bg-cardbg rounded-2xl border border-slate-800 text-slate-500 text-sm">Tidak ada container ditemukan.</div>`
+          return
+        }
+
+        container.innerHTML = keys
+          .map((prefix) => {
+            const stack = stacks[prefix]
+            const isActive = stack.isRunning
+            const isOpen = openCards[prefix] ?? true // Default terbuka
+
+            const subContainersHTML = stack.containers
+              .map((c) => {
+                const portsHTML =
+                  c.ports.length > 0
+                    ? c.ports
+                        .map(
+                          (p) => `
+                <a href="http://localhost:${p}" target="_blank" onclick="event.stopPropagation()" class="px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 rounded-lg text-xs font-mono border border-sky-500/30 flex items-center space-x-1.5 transition">
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                  <span>:${p}</span>
+                </a>
+              `,
+                        )
+                        .join("")
+                    : `<span class="text-[11px] text-slate-500 font-mono">No Port</span>`
+
+                return `
+            <div class="flex items-center justify-between bg-slate-900/60 border border-slate-800 px-4 py-3 rounded-xl">
+              <div class="flex items-center space-x-3 truncate">
+                <span class="w-2 h-2 rounded-full ${c.isRunning ? "bg-emerald-400 animate-pulse" : "bg-slate-600"}"></span>
+                <span class="font-mono text-xs ${c.isRunning ? "text-slate-200 font-semibold" : "text-slate-400"} truncate">${c.name}</span>
+              </div>
+              <div class="flex space-x-2">
+                ${portsHTML}
+              </div>
+            </div>
+          `
+              })
+              .join("")
+
+            return `
+          <div class="bg-cardbg border ${isActive ? "border-emerald-500/40" : "border-bordercolor"} rounded-2xl overflow-hidden transition-all shadow-xl">
+            <!-- Card Header (Clickable for Collapse) -->
+            <div onclick="toggleCollapse('${prefix}')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-800/40 transition">
+              <div class="flex items-center space-x-4">
+                <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform ${isOpen ? "rotate-180" : ""}"></i>
+                <div>
+                  <div class="flex items-center space-x-3">
+                    <h3 class="font-bold text-lg text-white">${stack.name}</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${isActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border border-rose-500/30"}">
+                      ${isActive ? "RUNNING" : "STOPPED"}
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-400 font-mono mt-0.5">${stack.containers.length} sub-containers</p>
+                </div>
+              </div>
+
+              <!-- Power Button -->
+              <div class="flex items-center space-x-3" onclick="event.stopPropagation()">
+                <button onclick="toggleStack('${prefix}', '${isActive ? "stop" : "start"}')"
+                  class="px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
+                    isActive
+                      ? "bg-rose-600 hover:bg-rose-700 text-white"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  }">
+                  <i class="fa-solid ${isActive ? "fa-power-off" : "fa-play"} mr-1.5"></i>
+                  <span>${isActive ? "STOP STACK" : "START STACK"}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Collapsible Body -->
+            <div class="${isOpen ? "block" : "hidden"} border-t border-slate-800/60 p-5 bg-slate-950/30 space-y-2.5">
+              ${subContainersHTML}
+            </div>
+          </div>
+        `
+          })
+          .join("")
+      }
+
+      async function toggleStack(prefix, action) {
+        await fetch("/api/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prefix, action }),
+        })
+        fetchStatus()
+      }
+
+      async function stopAll() {
+        if (confirm("Matikan seluruh container?")) {
+          await fetch("/api/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "stop_all" }),
+          })
+          fetchStatus()
+        }
+      }
+
+      fetchStatus()
+      setInterval(fetchStatus, 3000)
+    </script>
+  </body>
+</html>
