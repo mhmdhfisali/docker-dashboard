@@ -8,7 +8,6 @@ const PORT = 3000
 app.use(express.json())
 app.use(express.static(path.join(__dirname, "public")))
 
-// Mapping & parse port dari output Docker
 function parsePorts(rawPorts) {
   if (!rawPorts) return []
   const ports = []
@@ -19,8 +18,9 @@ function parsePorts(rawPorts) {
   return ports
 }
 
-// API Status
+// API Status & System Stats
 app.get("/api/status", (req, res) => {
+  // Ambil container info
   exec(
     'docker ps -a --format "{{.Names}}|{{.State}}|{{.Ports}}"',
     (err, stdout) => {
@@ -56,9 +56,44 @@ app.get("/api/status", (req, res) => {
         if (isRunning) stacks[prefix].isRunning = true
       })
 
-      res.json({ stacks, totalRunning })
+      // Ambil stats RAM & CPU penggunaan Docker secara keseluruhan
+      exec(
+        'docker stats --no-stream --format "{{.CPUPerc}}|{{.MemUsage}}"',
+        (statsErr, statsStdout) => {
+          let cpuTotal = 0
+          let memSummary = "0B / 0B"
+
+          if (!statsErr && statsStdout) {
+            const lines = statsStdout.split("\n").filter(Boolean)
+            lines.forEach((l) => {
+              const [cpu] = l.split("|")
+              cpuTotal += parseFloat(cpu.replace("%", "")) || 0
+            })
+            if (lines.length > 0) {
+              memSummary = lines[0].split("|")[1] || "Active"
+            }
+          }
+
+          res.json({
+            stacks,
+            totalRunning,
+            totalContainers: rawContainers.length,
+            cpuUsage: cpuTotal.toFixed(1) + "%",
+            memUsage: memSummary,
+          })
+        },
+      )
     },
   )
+})
+
+// API Get Logs Container Spesifik
+app.get("/api/logs/:name", (req, res) => {
+  const containerName = req.params.name
+  exec(`docker logs --tail 100 ${containerName}`, (err, stdout, stderr) => {
+    if (err) return res.status(500).json({ logs: stderr || err.message })
+    res.json({ logs: stdout || "Belum ada log tercatat." })
+  })
 })
 
 // API Toggle
