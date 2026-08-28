@@ -35,9 +35,6 @@
         background: #1e293b;
         border-radius: 4px;
       }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #334155;
-      }
     </style>
   </head>
   <body
@@ -61,25 +58,16 @@
               Docker Control Center
               <span
                 class="text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full"
-                >v2.5 Tunnel Pro</span
+                >v3.6 Pro</span
               >
             </h1>
             <p class="text-xs text-slate-400 font-medium">
-              Interactive Container Dashboard & Dynamic Public Tunnel Manager
+              Instant Multi-Stack Nav & Dynamic Public Tunnel Launcher
             </p>
           </div>
         </div>
 
         <div class="flex items-center space-x-3">
-          <!-- Button Quick Tunnel Control -->
-          <button
-            id="btn-toggle-tunnel"
-            onclick="toggleTunnel()"
-            class="px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold rounded-xl border border-amber-500/30 transition active:scale-95 flex items-center gap-2 shadow-sm"
-          >
-            <i class="fa-solid fa-globe"></i>
-            <span id="btn-tunnel-label">Start Public Tunnel</span>
-          </button>
           <button
             onclick="stopAll()"
             class="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/30 transition active:scale-95 flex items-center gap-2 shadow-sm"
@@ -97,51 +85,7 @@
         </div>
       </div>
 
-      <!-- Public Tunnel Live Banner -->
-      <div
-        id="tunnel-banner"
-        class="hidden bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between shadow-lg gap-3"
-      >
-        <div class="flex items-center space-x-3">
-          <div
-            class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 animate-pulse"
-          >
-            <i class="fa-solid fa-globe text-lg"></i>
-          </div>
-          <div>
-            <p
-              class="text-[11px] text-amber-400 font-bold uppercase tracking-wider"
-            >
-              Cloudflare Public Tunnel Active
-            </p>
-            <a
-              id="tunnel-url-link"
-              href="#"
-              target="_blank"
-              class="text-xs font-mono font-bold text-white hover:underline flex items-center gap-1.5 mt-0.5"
-            >
-              <span id="tunnel-url-text">Memuat URL Publik...</span>
-              <i
-                class="fa-solid fa-arrow-up-right-from-square text-[10px] text-amber-400"
-              ></i>
-            </a>
-          </div>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button
-            onclick="copyTunnelURL()"
-            class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold rounded-lg transition"
-          >
-            <i class="fa-solid fa-copy mr-1"></i> Copy Link
-          </button>
-          <span
-            class="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg font-bold"
-            >ONLINE</span
-          >
-        </div>
-      </div>
-
-      <!-- System Stats Widgets Grid -->
+      <!-- Stats Widgets -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div
           class="bg-cardbg border border-bordercolor p-4 rounded-2xl flex items-center space-x-4 shadow-lg"
@@ -233,7 +177,19 @@
         </div>
       </div>
 
-      <!-- Filter Search Bar -->
+      <!-- Quick Jump Filter Chips -->
+      <div class="flex flex-col space-y-2">
+        <span
+          class="text-[10px] text-slate-400 font-bold uppercase tracking-wider"
+          >Quick Project Filter:</span
+        >
+        <div
+          id="quick-filter-chips"
+          class="flex flex-wrap items-center gap-2"
+        ></div>
+      </div>
+
+      <!-- Search Bar & Functional Collapse/Expand Button -->
       <div class="flex items-center justify-between gap-4">
         <div class="relative flex-1">
           <i
@@ -243,22 +199,86 @@
             type="text"
             id="search-input"
             oninput="filterStacks()"
-            placeholder="Cari stack atau container (misal: smii, sppg, mysql)..."
+            placeholder="Cari stack atau container (misal: smii, sppg, app)..."
             class="w-full bg-cardbg border border-bordercolor rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500/50 transition shadow-inner"
           />
         </div>
         <button
           onclick="toggleExpandAll()"
-          class="px-3 py-2.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
+          class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition active:scale-95 flex items-center gap-2 shadow-sm"
         >
-          <i class="fa-solid fa-up-down text-xs"></i>
+          <i class="fa-solid fa-up-down text-xs text-sky-400"></i>
           <span id="expand-label">Collapse All</span>
         </button>
       </div>
 
       <!-- Stacks List Container -->
-      <div class="space-y-4" id="stack-container">
-        <!-- Generated Dynamically -->
+      <div class="space-y-4" id="stack-container"></div>
+    </div>
+
+    <!-- Tunnel Launcher Modal -->
+    <div
+      id="tunnel-modal"
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-cardbg border border-amber-500/30 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4"
+      >
+        <div
+          class="flex items-center justify-between border-b border-slate-800 pb-3"
+        >
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-globe text-amber-400 text-lg"></i>
+            <h3 id="tunnel-modal-title" class="font-bold text-sm text-white">
+              Public Tunnel Launcher
+            </h3>
+          </div>
+          <button
+            onclick="closeTunnelModal()"
+            class="text-slate-400 hover:text-white text-sm"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-xs text-slate-400">
+            URL Publik Cloudflare untuk proyek ini:
+          </p>
+          <div
+            class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between"
+          >
+            <span
+              id="modal-tunnel-url"
+              class="font-mono text-xs font-bold text-amber-300 truncate"
+              >Menghubungkan tunnel...</span
+            >
+            <button
+              onclick="copyModalURL()"
+              class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg hover:bg-amber-500/30"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <button
+            onclick="stopActiveTunnel()"
+            class="px-3 py-2 bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold rounded-xl hover:bg-rose-500/30"
+          >
+            Stop Tunnel
+          </button>
+          <a
+            id="modal-tunnel-link"
+            href="#"
+            target="_blank"
+            class="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400 flex items-center gap-1.5"
+          >
+            <span>Buka Link</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        </div>
       </div>
     </div>
 
@@ -274,14 +294,9 @@
           class="bg-slate-900 px-5 py-3.5 border-b border-slate-800 flex items-center justify-between"
         >
           <div class="flex items-center space-x-2">
-            <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
-            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
-            <span
-              class="w-3 h-3 rounded-full bg-emerald-500 inline-block"
-            ></span>
             <span
               id="modal-title"
-              class="font-mono text-xs font-bold text-slate-300 ml-3"
+              class="font-mono text-xs font-bold text-slate-300"
               >Container Logs</span
             >
           </div>
@@ -304,15 +319,16 @@ Memuat logs...</pre
     <script>
       const openCards = {}
       let globalStacksData = {}
-      let allExpanded = true
-      let isTunnelActive = false
-      let currentTunnelURL = ""
+      let activeTunnelName = ""
+      let activeTunnelInterval = null
+      let currentModalURL = ""
+      let selectedChip = "ALL"
+      let isAllExpanded = true
 
       async function fetchStatus() {
         try {
           const res = await fetch("/api/status")
           const data = await res.json()
-
           document.getElementById("stat-running").innerText = data.totalRunning
           document.getElementById("stat-stacks").innerText = Object.keys(
             data.stacks,
@@ -321,60 +337,40 @@ Memuat logs...</pre
           document.getElementById("stat-mem").innerText = data.memUsage
 
           globalStacksData = data.stacks
+          renderQuickFilterChips()
           filterStacks()
         } catch (err) {
           console.error(err)
         }
       }
 
-      async function checkTunnelStatus() {
-        try {
-          const res = await fetch("/api/tunnel-status")
-          const data = await res.json()
-          const banner = document.getElementById("tunnel-banner")
-          const btnLabel = document.getElementById("btn-tunnel-label")
+      function renderQuickFilterChips() {
+        const chipContainer = document.getElementById("quick-filter-chips")
+        const keys = Object.keys(globalStacksData)
 
-          isTunnelActive = data.active
+        let html = `
+        <button onclick="setFilterChip('ALL')" class="px-3 py-1 rounded-xl text-xs font-mono font-bold border transition ${selectedChip === "ALL" ? "bg-sky-500 text-slate-950 border-sky-400" : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"}">
+          ALL (${keys.length})
+        </button>
+      `
 
-          if (data.active) {
-            btnLabel.innerText = "Stop Public Tunnel"
-            if (data.url) {
-              currentTunnelURL = data.url
-              banner.classList.remove("hidden")
-              document.getElementById("tunnel-url-text").innerText = data.url
-              document.getElementById("tunnel-url-link").href = data.url
-            } else {
-              banner.classList.remove("hidden")
-              document.getElementById("tunnel-url-text").innerText =
-                "Menghubungkan tunnel ke Cloudflare..."
-            }
-          } else {
-            btnLabel.innerText = "Start Public Tunnel"
-            banner.classList.add("hidden")
-          }
-        } catch (err) {
-          document.getElementById("tunnel-banner").classList.add("hidden")
-        }
-      }
-
-      async function toggleTunnel() {
-        const action = isTunnelActive ? "stop" : "start"
-        await fetch("/api/tunnel-toggle", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action }),
+        keys.forEach((k) => {
+          const isSelected = selectedChip === k
+          html += `
+          <button onclick="setFilterChip('${k}')" class="px-3 py-1 rounded-xl text-xs font-mono font-bold border transition ${isSelected ? "bg-sky-500 text-slate-950 border-sky-400" : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"}">
+            ${k.toUpperCase()}
+          </button>
+        `
         })
-        setTimeout(() => {
-          checkTunnelStatus()
-          fetchStatus()
-        }, 1000)
+
+        chipContainer.innerHTML = html
       }
 
-      function copyTunnelURL() {
-        if (currentTunnelURL) {
-          navigator.clipboard.writeText(currentTunnelURL)
-          alert("URL Tunnel Publik berhasil disalin!")
-        }
+      function setFilterChip(chipKey) {
+        selectedChip = chipKey
+        document.getElementById("search-input").value = ""
+        renderQuickFilterChips()
+        filterStacks()
       }
 
       function toggleCollapse(prefix) {
@@ -382,50 +378,51 @@ Memuat logs...</pre
         renderStacks(globalStacksData)
       }
 
+      // Fungsi Toggle Expand / Collapse All yang Sudah Diperbaiki
       function toggleExpandAll() {
-        allExpanded = !allExpanded
+        isAllExpanded = !isAllExpanded
         Object.keys(globalStacksData).forEach((k) => {
-          openCards[k] = allExpanded
+          openCards[k] = isAllExpanded
         })
-        document.getElementById("expand-label").innerText = allExpanded
+        document.getElementById("expand-label").innerText = isAllExpanded
           ? "Collapse All"
           : "Expand All"
-        renderStacks(globalStacksData)
+        filterStacks()
       }
 
       function filterStacks() {
         const q = document.getElementById("search-input").value.toLowerCase()
-        if (!q) {
-          renderStacks(globalStacksData)
-          return
-        }
-
         const filtered = {}
+
         Object.keys(globalStacksData).forEach((prefix) => {
           const stack = globalStacksData[prefix]
-          const matchStack =
-            stack.name.toLowerCase().includes(q) ||
-            prefix.toLowerCase().includes(q)
-          const matchContainer = stack.containers.some((c) =>
-            c.name.toLowerCase().includes(q),
-          )
-          if (matchStack || matchContainer) {
-            filtered[prefix] = stack
+
+          if (selectedChip !== "ALL" && prefix !== selectedChip) return
+
+          if (q) {
+            const matchStack =
+              stack.name.toLowerCase().includes(q) ||
+              prefix.toLowerCase().includes(q)
+            const matchContainer = stack.containers.some((c) =>
+              c.name.toLowerCase().includes(q),
+            )
+            if (!matchStack && !matchContainer) return
           }
+
+          filtered[prefix] = stack
         })
+
         renderStacks(filtered)
       }
 
       function getTechIcon(name) {
         const lower = name.toLowerCase()
-        if (lower.includes("pma") || lower.includes("phpmyadmin"))
+        if (lower.includes("pma"))
           return '<i class="fa-solid fa-database text-amber-400"></i>'
         if (lower.includes("mysql") || lower.includes("db"))
           return '<i class="fa-solid fa-server text-sky-400"></i>'
-        if (lower.includes("laravel") || lower.includes("app"))
+        if (lower.includes("app") || lower.includes("laravel"))
           return '<i class="fa-solid fa-globe text-emerald-400"></i>'
-        if (lower.includes("tunnel") || lower.includes("cloudflared"))
-          return '<i class="fa-solid fa-shield-halved text-amber-400"></i>'
         return '<i class="fa-solid fa-cube text-slate-400"></i>'
       }
 
@@ -442,7 +439,7 @@ Memuat logs...</pre
           .map((prefix) => {
             const stack = stacks[prefix]
             const isActive = stack.isRunning
-            const isOpen = openCards[prefix] ?? true
+            const isOpen = openCards[prefix] ?? isAllExpanded
 
             const subContainersHTML = stack.containers
               .map((c) => {
@@ -452,10 +449,16 @@ Memuat logs...</pre
                     ? c.ports
                         .map(
                           (p) => `
-                <a href="http://localhost:${p}" target="_blank" onclick="event.stopPropagation()" class="px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 rounded-lg text-xs font-mono border border-sky-500/30 flex items-center space-x-1.5 transition">
-                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                  <span>:${p}</span>
-                </a>
+                <div class="flex items-center space-x-1">
+                  <a href="http://localhost:${p}" target="_blank" onclick="event.stopPropagation()" class="px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 rounded-lg text-xs font-mono border border-sky-500/30 flex items-center space-x-1 transition">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                    <span>:${p}</span>
+                  </a>
+                  <button onclick="launchTunnel('${c.name}', '${p}')" class="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition" title="Bikin Tunnel Publik">
+                    <i class="fa-solid fa-globe text-[10px]"></i>
+                    <span>Tunnel</span>
+                  </button>
+                </div>
               `,
                         )
                         .join("")
@@ -470,7 +473,7 @@ Memuat logs...</pre
               </div>
               <div class="flex items-center space-x-2">
                 ${portsHTML}
-                <button onclick="openLogs('${c.name}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono rounded-lg border border-slate-700 transition" title="Lihat Logs">
+                <button onclick="openLogs('${c.name}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono rounded-lg border border-slate-700 transition">
                   <i class="fa-solid fa-terminal text-[10px]"></i>
                 </button>
               </div>
@@ -481,7 +484,6 @@ Memuat logs...</pre
 
             return `
           <div class="bg-cardbg border ${isActive ? "border-emerald-500/30 shadow-emerald-950/10" : "border-bordercolor"} rounded-2xl overflow-hidden transition-all shadow-xl">
-            <!-- Card Header -->
             <div onclick="toggleCollapse('${prefix}')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-800/30 transition">
               <div class="flex items-center space-x-4">
                 <div class="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
@@ -490,7 +492,7 @@ Memuat logs...</pre
                 <div>
                   <div class="flex items-center space-x-3">
                     <h3 class="font-black text-lg text-white tracking-wide">${stack.name}</h3>
-                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${isActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border border-rose-500/30"}">
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${isActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border border-rose-500/30"}">
                       ${isActive ? "RUNNING" : "STOPPED"}
                     </span>
                   </div>
@@ -511,7 +513,6 @@ Memuat logs...</pre
               </div>
             </div>
 
-            <!-- Collapsible Body -->
             <div class="${isOpen ? "block" : "hidden"} border-t border-slate-800/80 p-4 bg-slate-950/40 space-y-2.5">
               ${subContainersHTML}
             </div>
@@ -519,6 +520,59 @@ Memuat logs...</pre
         `
           })
           .join("")
+      }
+
+      async function launchTunnel(containerName, port) {
+        activeTunnelName = `tunnel-${containerName}-${port}`
+        document.getElementById("tunnel-modal-title").innerText =
+          `Tunnel: ${containerName} (:${port})`
+        document.getElementById("modal-tunnel-url").innerText =
+          "Menyalakan Cloudflare Tunnel..."
+        document.getElementById("tunnel-modal").classList.remove("hidden")
+
+        await fetch("/api/tunnel/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ containerName, port }),
+        })
+
+        if (activeTunnelInterval) clearInterval(activeTunnelInterval)
+        activeTunnelInterval = setInterval(pollTunnelURL, 1500)
+      }
+
+      async function pollTunnelURL() {
+        if (!activeTunnelName) return
+        const res = await fetch(`/api/tunnel/url/${activeTunnelName}`)
+        const data = await res.json()
+        if (data.url) {
+          currentModalURL = data.url
+          document.getElementById("modal-tunnel-url").innerText = data.url
+          document.getElementById("modal-tunnel-link").href = data.url
+          clearInterval(activeTunnelInterval)
+        }
+      }
+
+      async function stopActiveTunnel() {
+        if (activeTunnelName) {
+          await fetch("/api/tunnel/stop", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tunnelName: activeTunnelName }),
+          })
+          closeTunnelModal()
+        }
+      }
+
+      function copyModalURL() {
+        if (currentModalURL) {
+          navigator.clipboard.writeText(currentModalURL)
+          alert("URL Tunnel Publik berhasil disalin!")
+        }
+      }
+
+      function closeTunnelModal() {
+        if (activeTunnelInterval) clearInterval(activeTunnelInterval)
+        document.getElementById("tunnel-modal").classList.add("hidden")
       }
 
       async function toggleStack(prefix, action) {
@@ -531,7 +585,7 @@ Memuat logs...</pre
       }
 
       async function stopAll() {
-        if (confirm("Matikan seluruh container Docker yang sedang berjalan?")) {
+        if (confirm("Matikan seluruh container?")) {
           await fetch("/api/toggle", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -544,18 +598,11 @@ Memuat logs...</pre
       async function openLogs(containerName) {
         document.getElementById("modal-title").innerText =
           `Logs: ${containerName}`
-        document.getElementById("modal-logs-body").innerText =
-          "Memuat logs terminal..."
+        document.getElementById("modal-logs-body").innerText = "Memuat logs..."
         document.getElementById("logs-modal").classList.remove("hidden")
-
-        try {
-          const res = await fetch(`/api/logs/${containerName}`)
-          const data = await res.json()
-          document.getElementById("modal-logs-body").innerText = data.logs
-        } catch (err) {
-          document.getElementById("modal-logs-body").innerText =
-            "Gagal mengambil logs."
-        }
+        const res = await fetch(`/api/logs/${containerName}`)
+        const data = await res.json()
+        document.getElementById("modal-logs-body").innerText = data.logs
       }
 
       function closeLogsModal() {
@@ -563,11 +610,7 @@ Memuat logs...</pre
       }
 
       fetchStatus()
-      checkTunnelStatus()
-      setInterval(() => {
-        fetchStatus()
-        checkTunnelStatus()
-      }, 3000)
+      setInterval(fetchStatus, 3000)
     </script>
   </body>
 </html>

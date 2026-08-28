@@ -4,12 +4,10 @@ const path = require("path")
 
 const app = express()
 const PORT = 3000
-const TUNNEL_CONTAINER = "tunnel-cloudflared"
 
 app.use(express.json())
 app.use(express.static(path.join(__dirname, "public")))
 
-// Utility untuk parsing port Docker
 function parsePorts(rawPorts) {
   if (!rawPorts) return []
   const ports = []
@@ -20,7 +18,18 @@ function parsePorts(rawPorts) {
   return ports
 }
 
-// API status utama (Stacks + CPU/RAM Stats)
+// Helper untuk ekstrak prefix stack yang konsisten
+function getStackPrefix(name) {
+  if (name.includes("-")) {
+    const parts = name.split("-")
+    return parts.length >= 3 ? `${parts[0]}-${parts[1]}` : parts[0]
+  } else if (name.includes("_")) {
+    return name.split("_")[0]
+  }
+  return name
+}
+
+// Get Stacks & Stats
 app.get("/api/status", (req, res) => {
   exec(
     'docker ps -a --format "{{.Names}}|{{.State}}|{{.Ports}}"',
@@ -36,18 +45,9 @@ app.get("/api/status", (req, res) => {
         const isRunning = state.toLowerCase() === "running"
         if (isRunning) totalRunning++
 
-        // Logika Pemisah Stack Presisi
-        let prefix = name
-        if (name.includes("-")) {
-          const parts = name.split("-")
-          if (parts.length >= 3) {
-            prefix = `${parts[0]}-${parts[1]}` // smii-ipc
-          } else {
-            prefix = parts[0] // smii
-          }
-        } else if (name.includes("_")) {
-          prefix = name.split("_")[0]
-        }
+        if (name.startsWith("tunnel-")) return
+
+        const prefix = getStackPrefix(name)
 
         if (!stacks[prefix]) {
           stacks[prefix] = {
@@ -97,64 +97,44 @@ app.get("/api/status", (req, res) => {
   )
 })
 
-// API Cek URL Public Cloudflare Tunnel
-app.get("/api/tunnel-status", (req, res) => {
-  exec(
-    `docker inspect -f '{{.State.Running}}' ${TUNNEL_CONTAINER}`,
-    (err, stdout) => {
-      const isRunning = !err && stdout.trim() === "true"
+// Start Dynamic Tunnel per Port Specific
+app.post("/api/tunnel/start", (req, res) => {
+  const { containerName, port } = req.body
+  const tunnelName = `tunnel-${containerName}-${port}`
 
-      if (!isRunning) {
-        return res.json({ active: false, url: null })
-      }
+  exec(`docker ps -a --format "{{.Names}}"`, (err, stdout) => {
+    const exists = stdout.split("\n").includes(tunnelName)
 
-      exec(
-        `docker logs --tail 50 ${TUNNEL_CONTAINER}`,
-        (logErr, logStdout, logStderr) => {
-          const logs = (logStdout || "") + (logStderr || "")
-          const match = logs.match(
-            /https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/,
-          )
+    const cmd = exists
+      ? `docker start ${tunnelName}`
+      : `docker run -d --name ${tunnelName} --net=host --restart=no cloudflare/cloudflared:latest tunnel --url http://127.0.0.1:${port}`
 
-          res.json({
-            active: true,
-            url: match ? match[0] : null,
-          })
-        },
-      )
-    },
-  )
+    exec(cmd, (runErr) => {
+      if (runErr) return res.status(500).json({ error: runErr.message })
+      res.json({ message: "Tunnel starting", tunnelName })
+    })
+  })
 })
 
-// API Toggle Cloudflare Tunnel (Start/Stop Tunnel Langsung)
-app.post("/api/tunnel-toggle", (req, res) => {
-  const { action } = req.body
-
-  if (action === "start") {
-    // Cek apakah container tunnel sudah dibuat sebelumnya
-    exec(`docker ps -a --format "{{.Names}}"`, (err, stdout) => {
-      const exists = stdout.split("\n").includes(TUNNEL_CONTAINER)
-
-      const cmd = exists
-        ? `docker start ${TUNNEL_CONTAINER}`
-        : `docker run -d --name ${TUNNEL_CONTAINER} --net=host --restart=no cloudflare/cloudflared:latest tunnel --url http://localhost:${PORT}`
-
-      exec(cmd, (runErr) => {
-        if (runErr) return res.status(500).json({ error: runErr.message })
-        res.json({ message: "Tunnel started successfully" })
-      })
-    })
-  } else if (action === "stop") {
-    exec(`docker stop ${TUNNEL_CONTAINER}`, (stopErr) => {
-      if (stopErr) return res.status(500).json({ error: stopErr.message })
-      res.json({ message: "Tunnel stopped successfully" })
-    })
-  } else {
-    res.status(400).json({ error: "Invalid action" })
-  }
+// Check Log URL Tunnel Spesifik
+app.get("/api/tunnel/url/:tunnelName", (req, res) => {
+  const { tunnelName } = req.params
+  exec(`docker logs --tail 50 ${tunnelName}`, (err, stdout, stderr) => {
+    const logs = (stdout || "") + (stderr || "")
+    const match = logs.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/)
+    res.json({ url: match ? match[0] : null })
+  })
 })
 
-// API Log Viewer per Container
+// Stop Tunnel Spesifik
+app.post("/api/tunnel/stop", (req, res) => {
+  const { tunnelName } = req.body
+  exec(`docker stop ${tunnelName}`, () => {
+    res.json({ message: "Tunnel stopped" })
+  })
+})
+
+// Logs Container
 app.get("/api/logs/:name", (req, res) => {
   const containerName = req.params.name
   exec(`docker logs --tail 100 ${containerName}`, (err, stdout, stderr) => {
@@ -163,7 +143,7 @@ app.get("/api/logs/:name", (req, res) => {
   })
 })
 
-// API Toggle Stacks / Stop All
+// Stacks Toggle Presisi
 app.post("/api/toggle", (req, res) => {
   const { prefix, action } = req.body
 
@@ -177,8 +157,8 @@ app.post("/api/toggle", (req, res) => {
     if (err) return res.status(500).json({ error: err.message })
 
     const allNames = stdout.split("\n").filter(Boolean)
-    const targetContainers = allNames.filter((n) =>
-      n.toLowerCase().includes(prefix.toLowerCase()),
+    const targetContainers = allNames.filter(
+      (name) => getStackPrefix(name).toLowerCase() === prefix.toLowerCase(),
     )
 
     if (targetContainers.length === 0)
@@ -196,6 +176,6 @@ app.post("/api/toggle", (req, res) => {
   })
 })
 
-app.listen(PORT, () => {
-  console.log(`🚀 Docker Control Center di http://localhost:${PORT}`)
-})
+app.listen(PORT, () =>
+  console.log(`🚀 Docker Control Center di http://localhost:${PORT}`),
+)
