@@ -24,7 +24,6 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <style>
-      /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -62,16 +61,25 @@
               Docker Control Center
               <span
                 class="text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full"
-                >v2.0 Pro</span
+                >v2.5 Tunnel Pro</span
               >
             </h1>
             <p class="text-xs text-slate-400 font-medium">
-              Interactive Container Dashboard & Real-time Resource Manager
+              Interactive Container Dashboard & Dynamic Public Tunnel Manager
             </p>
           </div>
         </div>
 
         <div class="flex items-center space-x-3">
+          <!-- Button Quick Tunnel Control -->
+          <button
+            id="btn-toggle-tunnel"
+            onclick="toggleTunnel()"
+            class="px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold rounded-xl border border-amber-500/30 transition active:scale-95 flex items-center gap-2 shadow-sm"
+          >
+            <i class="fa-solid fa-globe"></i>
+            <span id="btn-tunnel-label">Start Public Tunnel</span>
+          </button>
           <button
             onclick="stopAll()"
             class="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/30 transition active:scale-95 flex items-center gap-2 shadow-sm"
@@ -89,7 +97,51 @@
         </div>
       </div>
 
-      <!-- System Stats Widgets Grid (Mengisi Ruang Kosong) -->
+      <!-- Public Tunnel Live Banner -->
+      <div
+        id="tunnel-banner"
+        class="hidden bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between shadow-lg gap-3"
+      >
+        <div class="flex items-center space-x-3">
+          <div
+            class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 animate-pulse"
+          >
+            <i class="fa-solid fa-globe text-lg"></i>
+          </div>
+          <div>
+            <p
+              class="text-[11px] text-amber-400 font-bold uppercase tracking-wider"
+            >
+              Cloudflare Public Tunnel Active
+            </p>
+            <a
+              id="tunnel-url-link"
+              href="#"
+              target="_blank"
+              class="text-xs font-mono font-bold text-white hover:underline flex items-center gap-1.5 mt-0.5"
+            >
+              <span id="tunnel-url-text">Memuat URL Publik...</span>
+              <i
+                class="fa-solid fa-arrow-up-right-from-square text-[10px] text-amber-400"
+              ></i>
+            </a>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button
+            onclick="copyTunnelURL()"
+            class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold rounded-lg transition"
+          >
+            <i class="fa-solid fa-copy mr-1"></i> Copy Link
+          </button>
+          <span
+            class="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg font-bold"
+            >ONLINE</span
+          >
+        </div>
+      </div>
+
+      <!-- System Stats Widgets Grid -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div
           class="bg-cardbg border border-bordercolor p-4 rounded-2xl flex items-center space-x-4 shadow-lg"
@@ -253,6 +305,8 @@ Memuat logs...</pre
       const openCards = {}
       let globalStacksData = {}
       let allExpanded = true
+      let isTunnelActive = false
+      let currentTunnelURL = ""
 
       async function fetchStatus() {
         try {
@@ -270,6 +324,56 @@ Memuat logs...</pre
           filterStacks()
         } catch (err) {
           console.error(err)
+        }
+      }
+
+      async function checkTunnelStatus() {
+        try {
+          const res = await fetch("/api/tunnel-status")
+          const data = await res.json()
+          const banner = document.getElementById("tunnel-banner")
+          const btnLabel = document.getElementById("btn-tunnel-label")
+
+          isTunnelActive = data.active
+
+          if (data.active) {
+            btnLabel.innerText = "Stop Public Tunnel"
+            if (data.url) {
+              currentTunnelURL = data.url
+              banner.classList.remove("hidden")
+              document.getElementById("tunnel-url-text").innerText = data.url
+              document.getElementById("tunnel-url-link").href = data.url
+            } else {
+              banner.classList.remove("hidden")
+              document.getElementById("tunnel-url-text").innerText =
+                "Menghubungkan tunnel ke Cloudflare..."
+            }
+          } else {
+            btnLabel.innerText = "Start Public Tunnel"
+            banner.classList.add("hidden")
+          }
+        } catch (err) {
+          document.getElementById("tunnel-banner").classList.add("hidden")
+        }
+      }
+
+      async function toggleTunnel() {
+        const action = isTunnelActive ? "stop" : "start"
+        await fetch("/api/tunnel-toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        })
+        setTimeout(() => {
+          checkTunnelStatus()
+          fetchStatus()
+        }, 1000)
+      }
+
+      function copyTunnelURL() {
+        if (currentTunnelURL) {
+          navigator.clipboard.writeText(currentTunnelURL)
+          alert("URL Tunnel Publik berhasil disalin!")
         }
       }
 
@@ -320,8 +424,8 @@ Memuat logs...</pre
           return '<i class="fa-solid fa-server text-sky-400"></i>'
         if (lower.includes("laravel") || lower.includes("app"))
           return '<i class="fa-solid fa-globe text-emerald-400"></i>'
-        if (lower.includes("redis"))
-          return '<i class="fa-solid fa-bolt text-rose-400"></i>'
+        if (lower.includes("tunnel") || lower.includes("cloudflared"))
+          return '<i class="fa-solid fa-shield-halved text-amber-400"></i>'
         return '<i class="fa-solid fa-cube text-slate-400"></i>'
       }
 
@@ -459,7 +563,11 @@ Memuat logs...</pre
       }
 
       fetchStatus()
-      setInterval(fetchStatus, 3000)
+      checkTunnelStatus()
+      setInterval(() => {
+        fetchStatus()
+        checkTunnelStatus()
+      }, 3000)
     </script>
   </body>
 </html>
