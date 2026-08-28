@@ -18,9 +18,7 @@ function parsePorts(rawPorts) {
   return ports
 }
 
-// API Status & System Stats
 app.get("/api/status", (req, res) => {
-  // Ambil container info
   exec(
     'docker ps -a --format "{{.Names}}|{{.State}}|{{.Ports}}"',
     (err, stdout) => {
@@ -35,8 +33,17 @@ app.get("/api/status", (req, res) => {
         const isRunning = state.toLowerCase() === "running"
         if (isRunning) totalRunning++
 
-        let prefix = name.split("-")[0]
-        if (prefix.includes("_")) prefix = name.split("_")[0]
+        // Parsing prefix pintar untuk membedakan 'smii' dan 'smii-ipc'
+        let prefix = name
+        if (name.includes("-")) {
+          const parts = name.split("-")
+          prefix =
+            parts.length > 2 && isNaN(parts[1])
+              ? `${parts[0]}-${parts[1]}`
+              : parts[0]
+        } else if (name.includes("_")) {
+          prefix = name.split("_")[0]
+        }
 
         if (!stacks[prefix]) {
           stacks[prefix] = {
@@ -56,7 +63,6 @@ app.get("/api/status", (req, res) => {
         if (isRunning) stacks[prefix].isRunning = true
       })
 
-      // Ambil stats RAM & CPU penggunaan Docker secara keseluruhan
       exec(
         'docker stats --no-stream --format "{{.CPUPerc}}|{{.MemUsage}}"',
         (statsErr, statsStdout) => {
@@ -87,7 +93,6 @@ app.get("/api/status", (req, res) => {
   )
 })
 
-// API Get Logs Container Spesifik
 app.get("/api/logs/:name", (req, res) => {
   const containerName = req.params.name
   exec(`docker logs --tail 100 ${containerName}`, (err, stdout, stderr) => {
@@ -96,7 +101,6 @@ app.get("/api/logs/:name", (req, res) => {
   })
 })
 
-// API Toggle
 app.post("/api/toggle", (req, res) => {
   const { prefix, action } = req.body
 
